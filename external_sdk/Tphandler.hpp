@@ -207,13 +207,18 @@ public:
         update_cache();
 
         monitor_thread = std::thread(&c_tp_handler::monitor_loop, this);
-        monitor_thread.detach();
+        monitor_thread.detach(); // Intentional: runs for lifetime of process
 
         util.m_print("tp_handler: Started");
     }
 
     void stop() {
         running = false;
+        if (monitor_thread.joinable()) monitor_thread.join();
+    }
+
+    ~c_tp_handler() {
+        stop();
     }
 };
 inline c_tp_handler tp_handler;

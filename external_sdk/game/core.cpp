@@ -33,7 +33,7 @@ std::string c_core::read_string ( uintptr_t address )
 
 std::string c_core::length_read_string ( uintptr_t string ) 
 {
-    const auto length = memory->read < int > ( string + offsets::ClassDescriptor );
+    const auto length = memory->read < int > ( string + offsets::StringLength );
 
     if ( length >= 16u ) {
         const auto new_ptr = memory->read < uintptr_t > ( string );
@@ -55,16 +55,28 @@ std::string c_core::get_instance_classname ( uintptr_t instance_address )
     return ptr2 ? read_string ( ptr2 ) : "???";
 }
 
+// Shared cache for both find_first_child variants to avoid duplicate memory reads
+static std::unordered_map < uintptr_t, std::vector < std::pair < uintptr_t, std::string > > > s_name_cache;
+static std::unordered_map < uintptr_t, std::chrono::steady_clock::time_point > s_name_last_update;
+static std::unordered_map < uintptr_t, std::vector < std::pair < uintptr_t, std::string > > > s_class_cache;
+static std::unordered_map < uintptr_t, std::chrono::steady_clock::time_point > s_class_last_update;
+
+static inline void trim_caches()
+{
+    constexpr size_t MAX_CACHE_SIZE = 512;
+    if ( s_name_cache.size() > MAX_CACHE_SIZE ) { s_name_cache.clear(); s_name_last_update.clear(); }
+    if ( s_class_cache.size() > MAX_CACHE_SIZE ) { s_class_cache.clear(); s_class_last_update.clear(); }
+}
+
 uintptr_t c_core::find_first_child ( uintptr_t instance_address, const std::string &child_name ) 
 {
     if ( !instance_address ) return 0;
 
-    static std::unordered_map < uintptr_t, std::vector < std::pair < uintptr_t, std::string > > > cache;
-    static std::unordered_map < uintptr_t, std::chrono::steady_clock::time_point > last_update;
+    trim_caches();
 
     auto now = std::chrono::steady_clock::now();
-    auto &children = cache [ instance_address ];
-    auto &update_time = last_update [ instance_address ];
+    auto &children = s_name_cache [ instance_address ];
+    auto &update_time = s_name_last_update [ instance_address ];
 
     if ( children.empty() || now - update_time > std::chrono::seconds ( 2 ) ) {
         children.clear();
@@ -95,12 +107,11 @@ uintptr_t c_core::find_first_child_class( uintptr_t instance_address, const std:
 {
     if ( !instance_address ) return 0;
 
-    static std::unordered_map < uintptr_t, std::vector < std::pair < uintptr_t, std::string > > > cache;
-    static std::unordered_map < uintptr_t, std::chrono::steady_clock::time_point > last_update;
+    trim_caches();
 
     auto now = std::chrono::steady_clock::now();
-    auto &children = cache [ instance_address ];
-    auto &update_time = last_update [ instance_address ];
+    auto &children = s_class_cache [ instance_address ];
+    auto &update_time = s_class_last_update [ instance_address ];
 
     if ( children.empty() || now - update_time > std::chrono::seconds ( 2 ) ) {
         children.clear();
@@ -143,6 +154,9 @@ std::vector < uintptr_t > c_core::children ( uintptr_t instance_address )
     auto end = memory->read < uintptr_t > ( start + offsets::ChildrenEnd );
     auto child_array = memory->read<uintptr_t>(start);
     if ( !child_array || child_array >= end ) return container;
+
+    // Bounds check: prevent reading garbage if memory layout is wrong
+    if ( (end - child_array) > 65536 ) return container;
 
     for ( uintptr_t current = child_array; current < end; current += 16 ) {
         container.emplace_back ( memory->read < uintptr_t > ( current ) );
@@ -214,4 +228,3 @@ bool c_core::world_to_screen( const vector& world_pos, vector2d& screen_pos, con
 
     return true;
 }
-

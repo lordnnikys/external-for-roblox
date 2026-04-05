@@ -26,7 +26,7 @@ struct vector {
     vector(float x, float y, float z) : x(x), y(y), z(z) {}
 
     vector operator+(const vector& other) const { return vector(x + other.x, y + other.y, z + other.z); }
-    vector operator-(const vector& other) const { return vector(x - other.x, y - other.y, z - other.y); }
+    vector operator-(const vector& other) const { return vector(x - other.x, y - other.y, z - other.z); }
     vector operator*(float scalar) const { return vector(x * scalar, y * scalar, z * scalar); }
 
     float magnitude() const {

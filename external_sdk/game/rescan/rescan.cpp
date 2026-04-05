@@ -11,7 +11,7 @@ void c_rescan::start_search()
     if (!g_main::datamodel)
         return;
 
-    uintptr_t current_place_id = memory->read<uintptr_t>(g_main::datamodel + offsets::PlaceId);
+    uint64_t current_place_id = memory->read<uint64_t>(g_main::datamodel + offsets::PlaceId);
 
     if (current_place_id != 0 && current_place_id != m_last_place_id)
     {
@@ -23,7 +23,7 @@ void c_rescan::start_search()
             return;
 
         uintptr_t fake_datamodel_pointer = memory->read<uintptr_t>(base_address + offsets::FakeDataModelPointer);
-        if (!fake_datamodel_pointer)
+        if (!fake_datamodel_pointer || fake_datamodel_pointer < 0x10000)
             return;
 
         g_main::datamodel = memory->read<uintptr_t>(fake_datamodel_pointer + offsets::FakeDataModelToDataModel);

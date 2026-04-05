@@ -537,14 +537,9 @@ namespace offsets {
     inline uintptr_t extract_hex(const std::string& line) {
         size_t pos = line.find("0x");
         if (pos == std::string::npos) return 0;
-
-        std::string hex_str;
-        for (size_t i = pos; i < line.length(); i++) {
-            char c = line[i];
-            if (c == ';' || c == ' ' || c == '\t' || c == '\r' || c == '\n') break;
-            hex_str += c;
-        }
-
+        size_t end = pos;
+        while (end < line.length()) { char c = line[end]; if (c == ';' || c == ' ' || c == '\t' || c == '\r' || c == '\n') break; end++; }
+        std::string hex_str = line.substr(pos, end - pos);
         try {
             return std::stoull(hex_str, nullptr, 16);
         }

@@ -43,13 +43,20 @@ void c_feature_handler::start(uintptr_t datamodel)
 
     if (!g_main::v_engine) return;
 
-    view_matrix_t viewmatrix = memory->read<view_matrix_t>(g_main::v_engine + offsets::viewmatrix);
+    // Cache viewmatrix: read every 100ms instead of every frame
+    static view_matrix_t cached_viewmatrix;
+    static std::chrono::steady_clock::time_point last_vm_read;
+    auto now_vm = std::chrono::steady_clock::now();
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(now_vm - last_vm_read).count() >= 50) {
+        cached_viewmatrix = memory->read<view_matrix_t>(g_main::v_engine + offsets::viewmatrix);
+        last_vm_read = now_vm;
+    }
 
     if (vars::esp::toggled)
-        esp.run_players(viewmatrix);
+        esp.run_players(cached_viewmatrix);
 
-    esp.run_aimbot(viewmatrix);
-    esp.draw_hitbox_esp(viewmatrix);
+    esp.run_aimbot(cached_viewmatrix);
+    esp.draw_hitbox_esp(cached_viewmatrix);
 
     speed_hack::run();
     freecam.enabled = vars::freecam::toggled;

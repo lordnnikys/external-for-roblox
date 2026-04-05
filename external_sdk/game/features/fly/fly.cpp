@@ -1,4 +1,3 @@
-﻿// fly.cpp – pro Humanoid.MoveDirection fly, exactly your style
 #include "fly.hpp"
 #include "../../../handlers/vars.hpp"
 #include "../../../game/offsets/offsets.hpp"
@@ -6,6 +5,10 @@
 #include "../../../addons/kernel/memory.hpp"
 
 static bool fly_toggled = false;
+static float yaw = 0.0f;      // Cached yaw for stable camera-relative movement
+static float pitch = 0.0f;    // Cached pitch
+static bool prev_space = false;
+static bool prev_ctrl = false;
 
 void c_fly::run()
 {
@@ -35,58 +38,61 @@ void c_fly::run()
     uintptr_t humanoidRootPart = core.find_first_child(character, "HumanoidRootPart");
     if (!humanoidRootPart) return;
 
-    uintptr_t humanoid = core.find_first_child(character, "Humanoid");
+    uintptr_t humanoid = core.find_first_child_class(character, "Humanoid");
     if (!humanoid) return;
 
     uintptr_t primitive = memory->read<uintptr_t>(humanoidRootPart + offsets::Primitive);
     if (!primitive) return;
 
-    // Read Humanoid.MoveDirection (this is the  magic – already camera-relative!)
-    vector moveDirection = memory->read<vector>(humanoid + offsets::MoveDirection);
-
-    // Up/Down input
-    float upInput = 0.0f;
-    if (GetAsyncKeyState(VK_SPACE) & 0x8000)   upInput += 1.0f;
-    if (GetAsyncKeyState(VK_CONTROL) & 0x8000) upInput -= 1.0f;
-
-    // Get world UP vector from current character orientation
-    Matrix3 cf = memory->read<Matrix3>(primitive + offsets::CFrame);
-    vector upVector = { cf.data[1], cf.data[4], cf.data[7] }; // Y column = up
-
-    // Normalize up vector
-    float upLen = sqrtf(upVector.x * upVector.x + upVector.y * upVector.y + upVector.z * upVector.z);
-    if (upLen > 0.001f)
-    {
-        upVector.x /= upLen;
-        upVector.y /= upLen;
-        upVector.z /= upLen;
-    }
-
-    // Final movement + vertical
-    vector finalDir;
-    finalDir.x = moveDirection.x + upVector.x * upInput;
-    finalDir.y = moveDirection.y + upVector.y * upInput;
-    finalDir.z = moveDirection.z + upVector.z * upInput;
-
-    // Normalize and apply speed
-    float mag = sqrtf(finalDir.x * finalDir.x + finalDir.y * finalDir.y + finalDir.z * finalDir.z);
-
-    if (mag > 0.001f)
-    {
-        float speedMultiplier = vars::fly::speed * 25.0f;
-
-        vector velocity;
-        velocity.x = (finalDir.x / mag) * speedMultiplier;
-        velocity.y = (finalDir.y / mag) * speedMultiplier;
-        velocity.z = (finalDir.z / mag) * speedMultiplier;
-
-        memory->write<vector>(primitive + offsets::Velocity, velocity);
-    }
-    else
-    {
-        memory->write<vector>(primitive + offsets::Velocity, vector{ 0,0,0 });
-    }
-
-    // Noclip
+    // Disable collision while flying
     memory->write<bool>(primitive + offsets::CanCollide, false);
+
+    // Read current CFrame to get camera orientation
+    Matrix3 cf = memory->read<Matrix3>(primitive + offsets::CFrame);
+
+    // Extract forward (Z column) and right (X column) from the CFrame
+    vector forward = { -cf.R02, -cf.R12, -cf.R22 };
+    vector right   = {  cf.R00,  cf.R10,  cf.R20 };
+    vector up      = {  0.0f,   1.0f,    0.0f  };
+
+    // Normalize to prevent drift
+    float fwdMag = sqrtf(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
+    if (fwdMag > 0.001f) { forward.x /= fwdMag; forward.y /= fwdMag; forward.z /= fwdMag; }
+
+    float rtMag = sqrtf(right.x * right.x + right.y * right.y + right.z * right.z);
+    if (rtMag > 0.001f) { right.x /= rtMag; right.y /= rtMag; right.z /= rtMag; }
+
+    // WASD input (camera-relative, NOT MoveDirection which depends on Roblox's input)
+    float moveX = 0.0f, moveZ = 0.0f;
+    if (GetAsyncKeyState('D') & 0x8000) moveX += 1.0f;
+    if (GetAsyncKeyState('A') & 0x8000) moveX -= 1.0f;
+    if (GetAsyncKeyState('W') & 0x8000) moveZ += 1.0f;
+    if (GetAsyncKeyState('S') & 0x8000) moveZ -= 1.0f;
+
+    // Build velocity from camera-relative axes
+    float speed = vars::fly::speed * 50.0f;
+
+    vector velocity;
+    velocity.x = (right.x * moveX + forward.x * moveZ) * speed;
+    velocity.z = (right.z * moveX + forward.z * moveZ) * speed;
+
+    // Up/Down — apply directly to Y axis for stable vertical movement
+    bool space_now = (GetAsyncKeyState(VK_SPACE) & 0x8000) != 0;
+    bool ctrl_now  = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+    if (space_now) velocity.y += speed;
+    if (ctrl_now)  velocity.y -= speed;
+
+    // When no input, dampen velocity to prevent sliding
+    if (moveX == 0.0f && moveZ == 0.0f && !space_now && !ctrl_now)
+    {
+        // Read current velocity and dampen it
+        vector vel = memory->read<vector>(primitive + offsets::Velocity);
+        vel.x *= 0.85f;
+        vel.y *= 0.85f;
+        vel.z *= 0.85f;
+        memory->write<vector>(primitive + offsets::Velocity, vel);
+        return;
+    }
+
+    memory->write<vector>(primitive + offsets::Velocity, velocity);
 }
