@@ -3,13 +3,8 @@
 #include "../../../game/offsets/offsets.hpp"
 #include "../../../game/core.hpp"
 #include "../../../addons/kernel/memory.hpp"
-#include <Windows.h>
-#include <iostream>
-#include <cmath>
 
 static bool fly_toggled = false;
-static uintptr_t cached_workspace = 0;
-static uintptr_t cached_camera = 0;
 
 void c_fly::run()
 {
@@ -45,82 +40,55 @@ void c_fly::run()
     uintptr_t primitive = memory->read<uintptr_t>(humanoidRootPart + offsets::Primitive);
     if (!primitive) return;
 
-    // Cache camera lookup instead of searching every frame
-    if (!cached_workspace || !cached_camera)
+    // Disable collision while flying
+    memory->write<bool>(primitive + offsets::CanCollide, false);
+
+    // Read current CFrame to get camera orientation
+    // Use Matrix3 (data[9]) to read the rotation portion of CFrame
+    Matrix3 cf = memory->read<Matrix3>(primitive + offsets::CFrame);
+    // data layout: [0]=R00 [1]=R01 [2]=R02 [3]=R10 [4]=R11 [5]=R12 [6]=R20 [7]=R21 [8]=R22
+
+    // Extract forward (Z column = indices 2,5,8) and right (X column = indices 0,3,6)
+    vector forward = { -cf.data[2], -cf.data[5], -cf.data[8] };
+    vector right   = {  cf.data[0],  cf.data[3],  cf.data[6] };
+
+    // Normalize to prevent drift
+    float fwdMag = sqrtf(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
+    if (fwdMag > 0.001f) { forward.x /= fwdMag; forward.y /= fwdMag; forward.z /= fwdMag; }
+
+    float rtMag = sqrtf(right.x * right.x + right.y * right.y + right.z * right.z);
+    if (rtMag > 0.001f) { right.x /= rtMag; right.y /= rtMag; right.z /= rtMag; }
+
+    // WASD input (camera-relative from CFrame, NOT MoveDirection)
+    float moveX = 0.0f, moveZ = 0.0f;
+    if (GetAsyncKeyState('D') & 0x8000) moveX += 1.0f;
+    if (GetAsyncKeyState('A') & 0x8000) moveX -= 1.0f;
+    if (GetAsyncKeyState('W') & 0x8000) moveZ += 1.0f;
+    if (GetAsyncKeyState('S') & 0x8000) moveZ -= 1.0f;
+
+    // Build velocity from camera-relative axes
+    float speed = vars::fly::speed * 50.0f;
+
+    vector velocity;
+    velocity.x = (right.x * moveX + forward.x * moveZ) * speed;
+    velocity.z = (right.z * moveX + forward.z * moveZ) * speed;
+
+    // Up/Down — apply directly to Y axis for stable vertical movement
+    bool space_now = (GetAsyncKeyState(VK_SPACE) & 0x8000) != 0;
+    bool ctrl_now  = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+    if (space_now) velocity.y += speed;
+    if (ctrl_now)  velocity.y -= speed;
+
+    // When no input, dampen velocity to prevent sliding
+    if (moveX == 0.0f && moveZ == 0.0f && !space_now && !ctrl_now)
     {
-        cached_workspace = core.find_first_child_class(g_main::datamodel, "Workspace");
-        if (cached_workspace)
-            cached_camera = memory->read<uintptr_t>(cached_workspace + offsets::Workspace::CurrentCamera);
-    }
-    if (!cached_camera)
+        vector vel = memory->read<vector>(primitive + offsets::Velocity);
+        vel.x *= 0.85f;
+        vel.y *= 0.85f;
+        vel.z *= 0.85f;
+        memory->write<vector>(primitive + offsets::Velocity, vel);
         return;
-
-    // OPTIMIZATION: Read Camera CFrame rotation directly instead of relying on character CFrame.
-    // Camera rotation stores: X = pitch, Y = yaw, Z = roll
-    // This fixes the "must move camera left/right to fly straight" issue — previously fly
-    // used the character's CFrame which doesn't update unless the character physically moves.
-    vector cam_rot = memory->read<vector>(cached_camera + offsets::CameraRotation);
-    float yaw = cam_rot.y;    // yaw (horizontal angle)
-    float pitch = cam_rot.x;  // pitch (vertical angle)
-
-    // Build camera-relative forward/right vectors from yaw/pitch
-    vector forward, right;
-    forward.x = sinf(yaw);
-    forward.y = sinf(pitch);
-    forward.z = cosf(yaw);
-
-    right.x = cosf(yaw);
-    right.y = 0.0f;
-    right.z = -sinf(yaw);
-
-    // WASD movement (camera-relative horizontal plane)
-    float x_input = 0.0f;
-    float z_input = 0.0f;
-    if (GetAsyncKeyState('W') & 0x8000) z_input = 1.0f;
-    if (GetAsyncKeyState('S') & 0x8000) z_input = -1.0f;
-    if (GetAsyncKeyState('A') & 0x8000) x_input = -1.0f;
-    if (GetAsyncKeyState('D') & 0x8000) x_input = 1.0f;
-
-    // Up/Down input
-    float up_input = 0.0f;
-    if (GetAsyncKeyState(VK_SPACE) & 0x8000) up_input = 1.0f;
-    if (GetAsyncKeyState(VK_CONTROL) & 0x8000) up_input = -1.0f;
-
-    // Check if we have any active input
-    bool has_input = (x_input != 0.0f || z_input != 0.0f || up_input != 0.0f);
-
-    float fly_speed = vars::fly::speed * 120.0f;
-
-    if (!has_input)
-    {
-        // OPTIMIZATION: Dampen velocity when no input (smooth deceleration)
-        vector dampened_vel = memory->read<vector>(primitive + offsets::AssemblyLinearVelocity);
-        dampened_vel.x *= 0.85f;
-        dampened_vel.y *= 0.85f;
-        dampened_vel.z *= 0.85f;
-        memory->write<vector>(primitive + offsets::AssemblyLinearVelocity, dampened_vel);
-    }
-    else
-    {
-        // Normalize inputs and apply speed
-        float len = sqrtf(x_input * x_input + z_input * z_input + up_input * up_input);
-        if (len > 0.001f) len = 1.0f / len;
-
-        x_input *= len;
-        z_input *= len;
-        up_input *= len;
-
-        // Assemble velocity: XZ from camera-relative WASD, Y from up/down
-        vector velocity;
-        velocity.x = (forward.x * z_input + right.x * x_input) * fly_speed;
-        velocity.y = up_input * fly_speed;
-        velocity.z = (forward.z * z_input + right.z * x_input) * fly_speed;
-
-        memory->write<vector>(primitive + offsets::AssemblyLinearVelocity, velocity);
     }
 
-    // Noclip through walls
-    uint8_t prim_flags = memory->read<uint8_t>(primitive + offsets::PrimitiveFlags);
-    prim_flags &= ~offsets::CanCollideMask;
-    memory->write<uint8_t>(primitive + offsets::PrimitiveFlags, prim_flags);
+    memory->write<vector>(primitive + offsets::Velocity, velocity);
 }

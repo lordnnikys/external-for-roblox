@@ -33,26 +33,12 @@ std::mutex c_esp::players_mtx;
 std::atomic<bool> c_esp::hitbox_thread_running{ false };
 int c_esp::hitbox_processed_count = 0;
 
-// ==================== Player cache to reduce memory reads ====================
+// ==================== NEW: Player cache to reduce memory reads ====================
 static std::vector<uintptr_t> s_cached_players;
 static std::mutex s_players_cache_mtx;
 static std::chrono::steady_clock::time_point s_last_players_update;
 
-// ==================== Per-player struct cache (avoids find_first_child tree walks per frame) ====================
-struct PlayerPtrCache {
-    uintptr_t model = 0;
-    uintptr_t humanoid = 0;
-    uintptr_t humanoidRootPart = 0;
-    uintptr_t camera = 0;  // Cached camera pointer
-
-    // Last validated frame — if stale for >2 seconds, invalidate
-    std::chrono::steady_clock::time_point last_seen;
-};
-
-static std::unordered_map<uintptr_t /*player*/, PlayerPtrCache> s_player_ptr_cache;
-static std::mutex s_player_ptr_cache_mtx;
-
-// ==================== Thread-local buffer to avoid string allocations ====================
+// ==================== NEW: Thread-local buffer to avoid string allocations ====================
 thread_local static char s_string_buffer[256];
 
 // ==================== HELPER FUNCTIONS ====================
@@ -441,7 +427,7 @@ bool c_esp::is_visible(
     return result;
 }
 
-// ==================== OPTIMIZED: run_players ====================
+// ==================== FIXED: run_players ====================
 void c_esp::run_players(view_matrix_t viewmatrix)
 {
     if (vars::esp::show_fps)
@@ -460,28 +446,6 @@ void c_esp::run_players(view_matrix_t viewmatrix)
     const int screen_width = core.get_screen_width();
     const int screen_height = core.get_screen_height();
 
-    // Cache the camera pointer once for distance calculations
-    static uintptr_t s_cached_camera = 0;
-    if (!s_cached_camera)
-    {
-        uintptr_t workspace = core.find_first_child_class(g_main::datamodel, "Workspace");
-        if (workspace)
-            s_cached_camera = memory->read<uintptr_t>(workspace + offsets::Workspace::CurrentCamera);
-    }
-
-    // Clean up stale player cache entries (>3s old)
-    {
-        auto now = std::chrono::steady_clock::now();
-        std::lock_guard<std::mutex> lk(s_player_ptr_cache_mtx);
-        for (auto it = s_player_ptr_cache.begin(); it != s_player_ptr_cache.end(); )
-        {
-            if (std::chrono::duration_cast<std::chrono::seconds>(now - it->second.last_seen).count() > 3)
-                it = s_player_ptr_cache.erase(it);
-            else
-                ++it;
-        }
-    }
-
     for (auto& player : players)
     {
         if (!player || player == g_main::localplayer)
@@ -494,49 +458,28 @@ void c_esp::run_players(view_matrix_t viewmatrix)
                 continue;
         }
 
-        // === Use cache to avoid find_first_child tree walks ===
-        PlayerPtrCache* cache = nullptr;
-        {
-            std::lock_guard<std::mutex> lk(s_player_ptr_cache_mtx);
-            cache = &s_player_ptr_cache[player];
-        }
+        auto model = core.get_model_instance(player);
+        if (!model)
+            continue;
 
-        // If cache is fresh, skip tree walks entirely
-        bool cache_stale = (cache->model == 0 ||
-                             cache->humanoid == 0 ||
-                             cache->humanoidRootPart == 0);
+        auto humanoid = core.find_first_child_class(model, "Humanoid");
+        if (!humanoid)
+            continue;
 
-        if (cache_stale)
-        {
-            // Rebuild cache — these are the expensive tree walks
-            cache->model = core.get_model_instance(player);
-            if (!cache->model) continue;
+        float health = memory->read<float>(humanoid + offsets::Health);
+        float max_health = memory->read<float>(humanoid + offsets::MaxHealth);
 
-            cache->humanoid = core.find_first_child_class(cache->model, "Humanoid");
-            if (!cache->humanoid) continue;
-
-            cache->humanoidRootPart = core.find_first_child(cache->model, "HumanoidRootPart");
-            if (!cache->humanoidRootPart) continue;
-
-            cache->camera = s_cached_camera;
-            cache->last_seen = std::chrono::steady_clock::now();
-        }
-        else
-        {
-            // Cache hit — just update timestamp
-            cache->last_seen = std::chrono::steady_clock::now();
-        }
-
-        // Fast memory reads (no tree walks from here on)
-        float health = memory->read<float>(cache->humanoid + offsets::Health);
-        float max_health = memory->read<float>(cache->humanoid + offsets::MaxHealth);
+        if (vars::esp::hide_dead && health <= 0.0f)
+            continue;
 
         if (health <= 0.0f || max_health <= 0.0f)
-        {
-            if (vars::esp::hide_dead) continue;
-        }
+            continue;
 
-        auto p_player_root = memory->read<uintptr_t>(cache->humanoidRootPart + offsets::Primitive);
+        auto player_root = core.find_first_child(model, "HumanoidRootPart");
+        if (!player_root)
+            continue;
+
+        auto p_player_root = memory->read<uintptr_t>(player_root + offsets::Primitive);
         if (!p_player_root)
             continue;
 
@@ -546,15 +489,12 @@ void c_esp::run_players(view_matrix_t viewmatrix)
 
         vector w_player_root = memory->read<vector>(p_player_root + offsets::Position);
 
-        // Read local player position once for distance
-        vector local_pos = { 0, 0, 0 };
-        if (cache->camera)
-        {
-            local_pos = memory->read<vector>(cache->camera + offsets::Camera::Position);
-        }
+        float hip_height = memory->read<float>(humanoid + offsets::HipHeight);
+        if (hip_height <= 0.0f || hip_height > 10.0f)
+            hip_height = 2.0f;
 
         float height_above_hrp = 2.5f;
-        float height_below_hrp = 3.0f;
+        float height_below_hrp = hip_height + 0.5f;
 
         vector w_head_top;
         w_head_top.x = w_player_root.x;
@@ -618,7 +558,7 @@ void c_esp::run_players(view_matrix_t viewmatrix)
 
         if (vars::esp::show_weapon)
         {
-            auto equipped_tool = core.find_first_child_class(cache->model, "Tool");
+            auto equipped_tool = core.find_first_child_class(model, "Tool");
             if (equipped_tool)
             {
                 std::string weapon_name = core.get_instance_name(equipped_tool);
@@ -636,20 +576,35 @@ void c_esp::run_players(view_matrix_t viewmatrix)
             draw.outlined_string(ImVec2(center_x, s_foot_pos.y + 5.0f), s_string_buffer, health_color, ImColor(0, 0, 0, 255), true);
         }
 
-        if (vars::esp::show_distance && cache->camera)
+        if (vars::esp::show_distance)
         {
-            float dx = w_player_root.x - local_pos.x;
-            float dy = w_player_root.y - local_pos.y;
-            float dz = w_player_root.z - local_pos.z;
-            float distance = sqrtf(dx * dx + dy * dy + dz * dz);
+            uintptr_t workspace = core.find_first_child_class(g_main::datamodel, "Workspace");
+            uintptr_t local_char = core.find_first_child(workspace, core.get_instance_name(g_main::localplayer));
 
-            snprintf(s_string_buffer, sizeof(s_string_buffer), "[%.0fm]", distance);
-            draw.outlined_string(ImVec2(center_x, s_foot_pos.y + 20.0f), s_string_buffer, vars::esp::esp_distance_color, ImColor(0, 0, 0, 255), true);
+            if (local_char)
+            {
+                auto local_root = core.find_first_child(local_char, "HumanoidRootPart");
+                if (local_root)
+                {
+                    auto p_local_root = memory->read<uintptr_t>(local_root + offsets::Primitive);
+                    if (p_local_root)
+                    {
+                        vector local_pos = memory->read<vector>(p_local_root + offsets::Position);
+                        float dx = w_player_root.x - local_pos.x;
+                        float dy = w_player_root.y - local_pos.y;
+                        float dz = w_player_root.z - local_pos.z;
+                        float distance = sqrtf(dx * dx + dy * dy + dz * dz);
+
+                        snprintf(s_string_buffer, sizeof(s_string_buffer), "[%.0fm]", distance);
+                        draw.outlined_string(ImVec2(center_x, s_foot_pos.y + 20.0f), s_string_buffer, vars::esp::esp_distance_color, ImColor(0, 0, 0, 255), true);
+                    }
+                }
+            }
         }
 
         if (vars::esp::show_skeleton)
         {
-            DrawSkeleton(cache->model, viewmatrix);
+            DrawSkeleton(model, viewmatrix);
         }
     }
 }
