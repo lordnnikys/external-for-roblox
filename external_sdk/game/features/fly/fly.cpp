@@ -5,10 +5,6 @@
 #include "../../../addons/kernel/memory.hpp"
 
 static bool fly_toggled = false;
-static float yaw = 0.0f;      // Cached yaw for stable camera-relative movement
-static float pitch = 0.0f;    // Cached pitch
-static bool prev_space = false;
-static bool prev_ctrl = false;
 
 void c_fly::run()
 {
@@ -48,12 +44,13 @@ void c_fly::run()
     memory->write<bool>(primitive + offsets::CanCollide, false);
 
     // Read current CFrame to get camera orientation
+    // Use Matrix3 (data[9]) to read the rotation portion of CFrame
     Matrix3 cf = memory->read<Matrix3>(primitive + offsets::CFrame);
+    // data layout: [0]=R00 [1]=R01 [2]=R02 [3]=R10 [4]=R11 [5]=R12 [6]=R20 [7]=R21 [8]=R22
 
-    // Extract forward (Z column) and right (X column) from the CFrame
-    vector forward = { -cf.R02, -cf.R12, -cf.R22 };
-    vector right   = {  cf.R00,  cf.R10,  cf.R20 };
-    vector up      = {  0.0f,   1.0f,    0.0f  };
+    // Extract forward (Z column = indices 2,5,8) and right (X column = indices 0,3,6)
+    vector forward = { -cf.data[2], -cf.data[5], -cf.data[8] };
+    vector right   = {  cf.data[0],  cf.data[3],  cf.data[6] };
 
     // Normalize to prevent drift
     float fwdMag = sqrtf(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
@@ -62,7 +59,7 @@ void c_fly::run()
     float rtMag = sqrtf(right.x * right.x + right.y * right.y + right.z * right.z);
     if (rtMag > 0.001f) { right.x /= rtMag; right.y /= rtMag; right.z /= rtMag; }
 
-    // WASD input (camera-relative, NOT MoveDirection which depends on Roblox's input)
+    // WASD input (camera-relative from CFrame, NOT MoveDirection)
     float moveX = 0.0f, moveZ = 0.0f;
     if (GetAsyncKeyState('D') & 0x8000) moveX += 1.0f;
     if (GetAsyncKeyState('A') & 0x8000) moveX -= 1.0f;
@@ -85,7 +82,6 @@ void c_fly::run()
     // When no input, dampen velocity to prevent sliding
     if (moveX == 0.0f && moveZ == 0.0f && !space_now && !ctrl_now)
     {
-        // Read current velocity and dampen it
         vector vel = memory->read<vector>(primitive + offsets::Velocity);
         vel.x *= 0.85f;
         vel.y *= 0.85f;
