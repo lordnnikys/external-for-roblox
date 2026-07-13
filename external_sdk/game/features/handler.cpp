@@ -49,8 +49,10 @@ void c_feature_handler::start(uintptr_t datamodel)
     static bool has_valid_vm = false;
     {
         // WORKAROUND: Position moved from BasePart (0x12C) to Primitive (0xEC).
-        // The offset server doesn't update this yet. Override it here.
+        // Primitive Flags moved from 0x1AE to 0x1B6.
+        // The offset server doesn't update these yet. Override here.
         offsets::Position = 0xEC;
+        offsets::BasePart::PrimitiveFlags = 0x1B6;
 
         view_matrix_t vm = memory->read<view_matrix_t>(g_main::v_engine + offsets::viewmatrix);
         bool ok = (fabsf(vm.m[0][0]) > 0.0001f || fabsf(vm.m[0][1]) > 0.0001f

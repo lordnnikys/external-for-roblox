@@ -37,12 +37,12 @@ void noclip_thread_func()
 
                 if (start && end && end > start)
                 {
-                    size_t count = (end - start) / 8;
+                    size_t count = (end - start) / 16;
                     if (count > 30) count = 30;
 
                     for (size_t i = 0; i < count; i++)
                     {
-                        uintptr_t child = memory->read<uintptr_t>(start + i * 8);
+                        uintptr_t child = memory->read<uintptr_t>(start + i * 16);
                         if (!child) continue;
 
                         uintptr_t prim = memory->read<uintptr_t>(child + offsets::BasePart::Primitive);
@@ -52,14 +52,13 @@ void noclip_thread_func()
             }
         }
 
-        // Apply noclip
+        // Apply noclip: clear CanCollide(0x08) + CanTouch(0x10) on all primitives
         for (int i = 0; i < prim_count; i++)
         {
-            uint8_t flags = memory->read<uint8_t>(prims[i] + 0x1ae);
-            memory->write<uint8_t>(prims[i] + 0x1ae, flags & 0xF7);
+            uint8_t flags = memory->read<uint8_t>(prims[i] + offsets::BasePart::PrimitiveFlags);
+            memory->write<uint8_t>(prims[i] + offsets::BasePart::PrimitiveFlags, flags & ~0x18);
         }
 
-        // Sleep 50ms - adjust this for smoothness vs CPU usage
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
@@ -72,6 +71,8 @@ void c_noclip::run()
 
     if (want && !s_thread_running)
     {
+        offsets::BasePart::PrimitiveFlags = 0x1B6;
+
         s_should_stop = false;
         s_thread_running = true;
         std::thread(noclip_thread_func).detach();
@@ -80,6 +81,4 @@ void c_noclip::run()
     {
         s_should_stop = true;
     }
-
-    // Main thread does nothing - all work in background
 }
