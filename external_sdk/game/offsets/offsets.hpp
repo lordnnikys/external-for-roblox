@@ -289,6 +289,11 @@ namespace offsets {
         inline uintptr_t ReadOnlyGravity = 0x9b0;
     }
 
+    // Primitive-level fields (server namespace: Primitive::)
+    inline uintptr_t Primitive_AssemblyLinearVelocity = 0xF8;
+    inline uintptr_t Primitive_Position = 0xEC;
+    inline uintptr_t Primitive_Rotation = 0xC8;
+
     // Aliases
     inline uintptr_t& Animation = AnimationTrack::Animation;
     inline uintptr_t& Animator = AnimationTrack::Animator;
@@ -296,22 +301,22 @@ namespace offsets {
     inline uintptr_t& Looped = AnimationTrack::Looped;
     inline uintptr_t& Speed = AnimationTrack::Speed;
     inline uintptr_t& AssemblyAngularVelocity = BasePart::AssemblyAngularVelocity;
-    inline uintptr_t& AssemblyLinearVelocity = BasePart::AssemblyLinearVelocity;
+    inline uintptr_t& AssemblyLinearVelocity = Primitive_AssemblyLinearVelocity;
     inline uintptr_t& Color3 = BasePart::Color3;
     inline uintptr_t& Material = BasePart::Material;
     inline uintptr_t& MaterialType = BasePart::Material;
     inline uintptr_t& Position = BasePart::Position;
     inline uintptr_t& Primitive = BasePart::Primitive;
     inline uintptr_t& PrimitiveOwner = BasePart::PrimitiveOwner;
-    inline uintptr_t& Rotation = BasePart::Rotation;
-    inline uintptr_t& CFrame = BasePart::Rotation;
+    inline uintptr_t& Rotation = Primitive_Rotation;
+    inline uintptr_t& CFrame = Primitive_Rotation;
     inline uintptr_t& Shape = BasePart::Shape;
     inline uintptr_t& Size = BasePart::Size;
     inline uintptr_t& PartSize = BasePart::Size;
     inline uintptr_t& Transparency = BasePart::Transparency;
     inline uintptr_t& ValidatePrimitive = BasePart::ValidatePrimitive;
     inline uintptr_t& PrimitiveValidateValue = BasePart::ValidatePrimitive;
-    inline uintptr_t& Velocity = BasePart::AssemblyLinearVelocity;
+    inline uintptr_t& Velocity = Primitive_AssemblyLinearVelocity;
     inline uintptr_t& ByteCodePointer = ByteCode::Pointer;
     inline uintptr_t& LocalScriptBytecodePointer = ByteCode::Pointer;
     inline uintptr_t& ModuleScriptBytecodePointer = ByteCode::Pointer;
@@ -720,6 +725,10 @@ namespace offsets {
             {"PrimitiveFlags::Anchored", &PrimitiveFlags::Anchored},
             {"PrimitiveFlags::CanCollide", &PrimitiveFlags::CanCollide},
             {"PrimitiveFlags::CanTouch", &PrimitiveFlags::CanTouch},
+            // Primitive
+            {"Primitive::AssemblyLinearVelocity", &Primitive_AssemblyLinearVelocity},
+            {"Primitive::Position", &Primitive_Position},
+            {"Primitive::Rotation", &Primitive_Rotation},
             // ProximityPrompt
             {"ProximityPrompt::ActionText", &ProximityPrompt::ActionText},
             {"ProximityPrompt::Enabled", &ProximityPrompt::Enabled},
