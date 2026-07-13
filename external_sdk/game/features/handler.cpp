@@ -43,14 +43,25 @@ void c_feature_handler::start(uintptr_t datamodel)
 
     if (!g_main::v_engine) return;
 
-    // Cache viewmatrix: read every 100ms instead of every frame
+    // Read viewmatrix fresh every frame. Validate it's not degenerate
+    // (all-zero matrix collapses every player to the same screen pixel)
     static view_matrix_t cached_viewmatrix;
-    static std::chrono::steady_clock::time_point last_vm_read;
-    auto now_vm = std::chrono::steady_clock::now();
-    if (std::chrono::duration_cast<std::chrono::milliseconds>(now_vm - last_vm_read).count() >= 50) {
-        cached_viewmatrix = memory->read<view_matrix_t>(g_main::v_engine + offsets::viewmatrix);
-        last_vm_read = now_vm;
+    static bool has_valid_vm = false;
+    {
+        // WORKAROUND: Position moved from BasePart (0x12C) to Primitive (0xEC).
+        // The offset server doesn't update this yet. Override it here.
+        offsets::Position = 0xEC;
+
+        view_matrix_t vm = memory->read<view_matrix_t>(g_main::v_engine + offsets::viewmatrix);
+        bool ok = (fabsf(vm.m[0][0]) > 0.0001f || fabsf(vm.m[0][1]) > 0.0001f
+                || fabsf(vm.m[0][2]) > 0.0001f || fabsf(vm.m[0][3]) > 0.0001f)
+               && (fabsf(vm.m[1][0]) > 0.0001f || fabsf(vm.m[1][1]) > 0.0001f
+                || fabsf(vm.m[1][2]) > 0.0001f || fabsf(vm.m[1][3]) > 0.0001f)
+               && (fabsf(vm.m[3][0]) > 0.0001f || fabsf(vm.m[3][1]) > 0.0001f
+                || fabsf(vm.m[3][2]) > 0.0001f || fabsf(vm.m[3][3]) > 0.0001f);
+        if (ok) { cached_viewmatrix = vm; has_valid_vm = true; }
     }
+    if (!has_valid_vm) return;
 
     if (vars::esp::toggled)
         esp.run_players(cached_viewmatrix);
