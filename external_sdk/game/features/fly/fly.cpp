@@ -7,8 +7,8 @@
 #include <atomic>
 #include <cmath>
 
-static std::atomic<bool> s_running{false};
-static std::atomic<bool> s_stop{false};
+static std::atomic<bool> s_running{ false };
+static std::atomic<bool> s_stop{ false };
 
 static void fly_thread()
 {
@@ -44,7 +44,7 @@ static void fly_thread()
         CFrame cf = memory->read<CFrame>(primitive + offsets::Rotation);
 
         vector forward = { -cf.R02, -cf.R12, -cf.R22 };
-        vector right   = {  cf.R00,  cf.R10,  cf.R20 };
+        vector right = { cf.R00,  cf.R10,  cf.R20 };
 
         float fwdMag = sqrtf(forward.x * forward.x + forward.y * forward.y + forward.z * forward.z);
         if (fwdMag > 0.001f) { forward.x /= fwdMag; forward.y /= fwdMag; forward.z /= fwdMag; }
@@ -59,7 +59,7 @@ static void fly_thread()
         if (GetAsyncKeyState('S') & 0x8000) moveZ -= 1.0f;
 
         bool space = (GetAsyncKeyState(VK_SPACE) & 0x8000) != 0;
-        bool ctrl  = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+        bool ctrl = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
 
         float speed = vars::fly::speed * 50.0f;
 

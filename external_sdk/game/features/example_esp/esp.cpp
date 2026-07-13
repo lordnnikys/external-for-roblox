@@ -950,7 +950,7 @@ void c_esp::run_aimbot(view_matrix_t viewmatrix)
         // PREDICTION
         if (vars::aimbot::prediction)
         {
-            w_target_bone_pos = predict_position(w_target_bone_pos, v_player_root, cam_pos);
+            w_target_bone_pos = predict_position(w_target_bone_pos, current_target, cam_pos);
         }
 
         // SHAKE
@@ -1081,30 +1081,210 @@ const char* c_esp::get_random_part_name()
     return parts[rand() % 4];
 }
 
-vector c_esp::predict_position(vector current_pos, vector velocity, vector cam_pos)
+vector c_esp::predict_position(vector current_pos, uintptr_t target_id, vector cam_pos)
 {
+    auto now = std::chrono::steady_clock::now();
+
+    // Look up or create tracking data for this target
+    std::lock_guard<std::mutex> lock(tracking_mtx);
+    TargetData& td = target_tracking[target_id];
+
+    // First time seeing this target — initialize and return raw position
+    if (!td.initialized)
+    {
+        td.last_position = current_pos;
+        td.smoothed_velocity = { 0.f, 0.f, 0.f };
+        td.last_raw_velocity = { 0.f, 0.f, 0.f };
+        td.acceleration = { 0.f, 0.f, 0.f };
+        td.last_update = now;
+        td.sample_count = 0;
+        td.initialized = true;
+        td.velocity_variance = 0.0f;
+        td.avg_frame_dt = 0.016f;
+        td.avg_speed = 0.0f;
+        return current_pos;
+    }
+
+    // Compute delta time since last frame
+    float dt = std::chrono::duration<float>(now - td.last_update).count();
+    td.last_update = now;
+
+    // Guard against degenerate dt (pause, alt-tab, first frames)
+    if (dt <= 0.0001f || dt > 0.5f)
+    {
+        td.last_position = current_pos;
+        return current_pos;
+    }
+
+    // ===== DETERMINE PARAMETERS (auto or manual) =====
+    bool auto_mode = vars::aimbot::prediction_auto;
+
+    // Track frame timing (always, needed for auto mode)
+    td.avg_frame_dt = td.avg_frame_dt * 0.9f + dt * 0.1f;
+
+    // ===== POSITION-DERIVED VELOCITY =====
+    vector raw_velocity = {
+        (current_pos.x - td.last_position.x) / dt,
+        (current_pos.y - td.last_position.y) / dt,
+        (current_pos.z - td.last_position.z) / dt
+    };
+
+    // NaN check
+    if (isnan(raw_velocity.x) || isnan(raw_velocity.y) || isnan(raw_velocity.z))
+    {
+        td.last_position = current_pos;
+        return current_pos;
+    }
+
+    float vel_mag = sqrtf(raw_velocity.x * raw_velocity.x + raw_velocity.y * raw_velocity.y + raw_velocity.z * raw_velocity.z);
+
+    // ===== UPDATE ADAPTIVE STATE =====
+    // Track average speed (EMA)
+    td.avg_speed = td.avg_speed * 0.95f + vel_mag * 0.05f;
+
+    // ===== TELEPORT REJECTION =====
+    float max_vel;
+    if (auto_mode)
+    {
+        // Adaptive: 5x observed average speed + 30 stud/s baseline
+        // This automatically adjusts to game speed — slow games get tight threshold,
+        // fast games get loose threshold. The +30 prevents false positives when standing still.
+        max_vel = fmaxf(td.avg_speed * 5.0f + 30.0f, 50.0f);
+    }
+    else
+    {
+        max_vel = vars::aimbot::prediction_max_velocity;
+    }
+
+    if (vel_mag > max_vel)
+    {
+        // Teleport detected — reset tracking and return raw position
+        td.last_position = current_pos;
+        td.smoothed_velocity = { 0.f, 0.f, 0.f };
+        td.last_raw_velocity = { 0.f, 0.f, 0.f };
+        td.acceleration = { 0.f, 0.f, 0.f };
+        td.sample_count = 0;
+        td.avg_speed = 0.0f;
+        td.velocity_variance = 0.0f;
+        return current_pos;
+    }
+
+    // ===== VELOCITY VARIANCE TRACKING =====
+    // Measures how "jittery" the velocity is — used by auto mode to adapt smoothing
+    {
+        float diff_x = raw_velocity.x - td.smoothed_velocity.x;
+        float diff_y = raw_velocity.y - td.smoothed_velocity.y;
+        float diff_z = raw_velocity.z - td.smoothed_velocity.z;
+        float instant_variance = diff_x * diff_x + diff_y * diff_y + diff_z * diff_z;
+        td.velocity_variance = td.velocity_variance * 0.85f + instant_variance * 0.15f;
+    }
+
+    // ===== EMA VELOCITY SMOOTHING =====
+    float alpha;
+    if (auto_mode)
+    {
+        // Adaptive alpha based on velocity variance:
+        // - Low variance (stable movement): alpha = 0.6-0.8 → responsive, trusts raw data
+        // - High variance (jittery/strafing): alpha = 0.15-0.25 → heavy smoothing
+        //
+        // Normalize variance relative to speed to handle different game speeds
+        float norm_variance = (td.avg_speed > 1.0f) ? sqrtf(td.velocity_variance) / td.avg_speed : 0.0f;
+        // norm_variance ~0 = perfectly stable, ~1+ = very jittery
+        float var_factor = fminf(norm_variance / 1.5f, 1.0f); // 0..1, saturates at high jitter
+        alpha = 0.75f - var_factor * 0.55f; // Maps to 0.75 (stable) → 0.20 (jittery)
+        alpha = fmaxf(0.12f, fminf(alpha, 0.80f)); // Safety clamp
+    }
+    else
+    {
+        alpha = vars::aimbot::prediction_smoothing;
+        alpha = fmaxf(0.05f, fminf(alpha, 1.0f));
+    }
+
+    td.smoothed_velocity.x = td.smoothed_velocity.x * (1.0f - alpha) + raw_velocity.x * alpha;
+    td.smoothed_velocity.y = td.smoothed_velocity.y * (1.0f - alpha) + raw_velocity.y * alpha;
+    td.smoothed_velocity.z = td.smoothed_velocity.z * (1.0f - alpha) + raw_velocity.z * alpha;
+
+    // ===== ACCELERATION TRACKING =====
+    // In auto mode: always track acceleration, decide later whether to use it
+    // In manual mode: only track if user enabled it
+    bool track_accel = auto_mode || vars::aimbot::prediction_use_acceleration;
+    bool accel_reliable = false;
+
+    if (track_accel && td.sample_count >= 2)
+    {
+        float accel_alpha = alpha * 0.4f; // Smooth acceleration more than velocity
+        vector raw_accel = {
+            (raw_velocity.x - td.last_raw_velocity.x) / dt,
+            (raw_velocity.y - td.last_raw_velocity.y) / dt,
+            (raw_velocity.z - td.last_raw_velocity.z) / dt
+        };
+
+        float accel_mag = sqrtf(raw_accel.x * raw_accel.x + raw_accel.y * raw_accel.y + raw_accel.z * raw_accel.z);
+        if (accel_mag > max_vel * 2.0f)
+            raw_accel = { 0.f, 0.f, 0.f };
+
+        td.acceleration.x = td.acceleration.x * (1.0f - accel_alpha) + raw_accel.x * accel_alpha;
+        td.acceleration.y = td.acceleration.y * (1.0f - accel_alpha) + raw_accel.y * accel_alpha;
+        td.acceleration.z = td.acceleration.z * (1.0f - accel_alpha) + raw_accel.z * accel_alpha;
+
+        // Auto-detect if acceleration is consistent enough to use
+        // If smoothed acceleration magnitude is significant relative to velocity, it's real (strafing/turning)
+        if (auto_mode)
+        {
+            float smoothed_accel_mag = sqrtf(td.acceleration.x * td.acceleration.x + td.acceleration.y * td.acceleration.y + td.acceleration.z * td.acceleration.z);
+            float smoothed_vel_mag = sqrtf(td.smoothed_velocity.x * td.smoothed_velocity.x + td.smoothed_velocity.y * td.smoothed_velocity.y + td.smoothed_velocity.z * td.smoothed_velocity.z);
+            // Acceleration is "real" if it's at least 20% of velocity and we have enough samples
+            accel_reliable = (smoothed_vel_mag > 3.0f && smoothed_accel_mag > smoothed_vel_mag * 0.2f && td.sample_count >= 8);
+        }
+    }
+    td.last_raw_velocity = raw_velocity;
+
+    // Update stored position for next frame
+    td.last_position = current_pos;
+    td.sample_count++;
+
+    // ===== GRADUAL RAMP-UP =====
+    constexpr int RAMP_FRAMES = 5;
+    float ramp = (td.sample_count >= RAMP_FRAMES) ? 1.0f : (static_cast<float>(td.sample_count) / static_cast<float>(RAMP_FRAMES));
+
+    // ===== COMPUTE PREDICTION TIME =====
+    float pred_time;
+    if (auto_mode)
+    {
+        // Adaptive prediction time: use 2x the measured frame delta
+        // This compensates for: 1 frame of position read delay + 1 frame of input processing
+        // Clamped to sane range to prevent over/under-shoot
+        pred_time = td.avg_frame_dt * 2.0f;
+        pred_time = fmaxf(0.02f, fminf(pred_time, 0.18f));
+    }
+    else
+    {
+        pred_time = vars::aimbot::prediction_time;
+        if (pred_time <= 0.0f)
+            return current_pos;
+    }
+
+    // ===== COMPUTE PREDICTED POSITION =====
+    float t = pred_time * ramp;
     vector predicted = current_pos;
 
-    if (isnan(velocity.x) || isnan(velocity.y) || isnan(velocity.z))
-        return current_pos;
-
-    if (vars::aimbot::prediction_x <= 0.0f)
-        return current_pos;
-
-    float dx = current_pos.x - cam_pos.x;
-    float dy = current_pos.y - cam_pos.y;
-    float dz = current_pos.z - cam_pos.z;
-    float distance = sqrtf(dx * dx + dy * dy + dz * dz);
-
-    float distance_scale = distance / 50.0f;
-    distance_scale = fmaxf(0.5f, fminf(distance_scale, 2.0f));
-
-    predicted.x += (velocity.x / vars::aimbot::prediction_x) * distance_scale;
-    predicted.z += (velocity.z / vars::aimbot::prediction_x) * distance_scale;
+    // Linear prediction: pos + vel * t
+    predicted.x += td.smoothed_velocity.x * t;
+    predicted.z += td.smoothed_velocity.z * t;
 
     if (!vars::aimbot::prediction_ignore_y)
+        predicted.y += td.smoothed_velocity.y * t;
+
+    // Quadratic prediction: + 0.5 * accel * t^2
+    bool use_accel = auto_mode ? accel_reliable : (vars::aimbot::prediction_use_acceleration && td.sample_count >= RAMP_FRAMES);
+    if (use_accel)
     {
-        predicted.y += (velocity.y / vars::aimbot::prediction_y) * distance_scale;
+        float half_t2 = 0.5f * t * t;
+        predicted.x += td.acceleration.x * half_t2;
+        predicted.z += td.acceleration.z * half_t2;
+
+        if (!vars::aimbot::prediction_ignore_y)
+            predicted.y += td.acceleration.y * half_t2;
     }
 
     return predicted;
@@ -1300,6 +1480,27 @@ void c_esp::reset_aim_state()
     this->leftover_y = 0.0f;
     this->smoothed_delta_x = 0.0f;
     this->smoothed_delta_y = 0.0f;
+
+    // Clear tracking data for the locked target so prediction restarts fresh
+    if (this->locked_target != 0)
+    {
+        std::lock_guard<std::mutex> lock(tracking_mtx);
+        target_tracking.erase(this->locked_target);
+    }
+
+    // Prune stale tracking entries (targets we haven't seen in >2 seconds)
+    {
+        auto now = std::chrono::steady_clock::now();
+        std::lock_guard<std::mutex> lock(tracking_mtx);
+        for (auto it = target_tracking.begin(); it != target_tracking.end();)
+        {
+            float age = std::chrono::duration<float>(now - it->second.last_update).count();
+            if (age > 2.0f)
+                it = target_tracking.erase(it);
+            else
+                ++it;
+        }
+    }
 }
 
 void c_esp::draw_hitbox_esp(view_matrix_t viewmatrix)

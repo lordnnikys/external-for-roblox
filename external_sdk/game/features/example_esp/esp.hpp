@@ -15,9 +15,18 @@ struct WorldPart
 
 struct TargetData
 {
-    vector last_velocity;
-    vector last_position;
+    vector last_position;   // Previous frame's world position
+    vector smoothed_velocity; // EMA-filtered velocity (the stable output)
+    vector last_raw_velocity; // Previous frame's raw velocity (for acceleration)
+    vector acceleration;    // Velocity change rate (for quadratic prediction)
     std::chrono::steady_clock::time_point last_update;
+    int sample_count = 0;   // How many frames tracked (ramp up gradually)
+    bool initialized = false;
+
+    // Auto-tuning state
+    float velocity_variance = 0.0f;  // Running variance of velocity (for adaptive smoothing)
+    float avg_frame_dt = 0.016f;     // Running average frame delta (for adaptive pred time)
+    float avg_speed = 0.0f;          // Running average speed (for adaptive teleport threshold)
 };
 
 class c_esp
@@ -48,7 +57,7 @@ public:
     const char* get_target_bone_name(uintptr_t model, uintptr_t player);
     const char* get_closest_part_name(uintptr_t model);
     const char* get_random_part_name();
-    vector predict_position(vector current_pos, vector velocity, vector cam_pos);
+    vector predict_position(vector current_pos, uintptr_t target_id, vector cam_pos);
     float apply_easing(float t, int style);
     void perform_aim(float delta_x, float delta_y, float target_x, float target_y);
     void run_triggerbot(uintptr_t model, uintptr_t p_player_root, float delta_x, float delta_y, vector cam_pos, vector w_target_bone_pos);

@@ -192,9 +192,22 @@ void c_menu::run_main_window()
                 ImGui::Checkbox("Prediction", &vars::aimbot::prediction);
                 if (vars::aimbot::prediction)
                 {
-                    ImGui::SliderFloat("Prediction X/Z", &vars::aimbot::prediction_x, 1.0f, 50.0f);
-                    ImGui::SliderFloat("Prediction Y", &vars::aimbot::prediction_y, 1.0f, 50.0f);
+                    ImGui::Checkbox("Auto (Recommended)", &vars::aimbot::prediction_auto);
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Automatically tunes all prediction values. Just enable and go.");
+
+                    if (!vars::aimbot::prediction_auto)
+                    {
+                        ImGui::SliderFloat("Pred Time (s)", &vars::aimbot::prediction_time, 0.01f, 0.30f, "%.3f");
+                        if (ImGui::IsItemHovered()) ImGui::SetTooltip("How far ahead to predict (seconds). Higher = more lead.");
+                        ImGui::SliderFloat("Vel Smoothing", &vars::aimbot::prediction_smoothing, 0.05f, 1.0f, "%.2f");
+                        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Velocity filter strength. Lower = smoother/less jitter.");
+                        ImGui::SliderFloat("Max Velocity", &vars::aimbot::prediction_max_velocity, 20.0f, 300.0f, "%.0f");
+                        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Reject velocities above this (rejects teleports).");
+                        ImGui::Checkbox("Use Acceleration", &vars::aimbot::prediction_use_acceleration);
+                        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Quadratic prediction for curved movement paths.");
+                    }
                     ImGui::Checkbox("Ignore Y Axis", &vars::aimbot::prediction_ignore_y);
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Don't predict vertical movement (good for grounded games).");
                 }
 
                 ImGui::Separator();

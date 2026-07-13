@@ -75,10 +75,13 @@ namespace vars
         inline int aimbot_hitbox = 0; // 0 = Head, 1 = Body ()
         inline bool ignore_teammates = true;
         inline bool show_fov_circle = true; // New: Toggle for FOV circle
-        inline bool prediction = false; // New: Toggle for aimbot prediction
-        inline float prediction_x = 10.0f;  // Lower = more prediction (divisor)
-        inline float prediction_y = 15.0f;  // Usually want less Y prediction
-        inline bool prediction_ignore_y = true;
+        inline bool prediction = false; // Toggle for aimbot prediction
+        inline bool prediction_auto = true;  // Auto-tune all prediction values (recommended)
+        inline float prediction_time = 0.08f;  // How far ahead to predict (seconds). 0.05-0.20 typical range
+        inline float prediction_smoothing = 0.4f;  // EMA alpha for velocity smoothing (0.1=very smooth, 1.0=raw). Lower = less jitter
+        inline bool prediction_use_acceleration = false;  // Use quadratic prediction (vel + 0.5*accel*t^2)
+        inline float prediction_max_velocity = 100.0f;  // Clamp velocity to reject teleports/respawns (studs/s)
+        inline bool prediction_ignore_y = true;  // Ignore vertical velocity (good for grounded games)
         inline bool sticky_aim = false;
         inline int target_selection = 0;
 
