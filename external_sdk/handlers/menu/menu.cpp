@@ -226,7 +226,7 @@ void c_menu::run_main_window()
                 ImGui::Checkbox("Anti-Flick", &vars::aimbot::anti_flick);
                 if (vars::aimbot::anti_flick)
                 {
-                    ImGui::SliderFloat("Flick Distance", &vars::aimbot::anti_flick_distance, 100.0f, 1000.0f);
+                    ImGui::SliderFloat("Flick Distance", &vars::aimbot::anti_flick_distance, 30.0f, 200.0f);
                 }
 
                 ImGui::Separator();

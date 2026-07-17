@@ -207,8 +207,18 @@ void c_esp::calculate_fps()
 // ==================== FIXED: update_world_cache ====================
 void c_esp::update_world_cache()
 {
-    if (building || shutdown_requested) return;  // FIX: Check shutdown
+    if (building || shutdown_requested) return;
     building = true;
+
+    // Ensure correct Position offset for geometry reads
+    offsets::Position = 0xEC;
+
+    // Clear stale geometry so it rebuilds with correct offset
+    {
+        std::lock_guard<std::mutex> lk(geometry_mtx);
+        geometry.clear();
+    }
+    ready = false;
 
     std::thread([]()
         {
@@ -872,19 +882,35 @@ void c_esp::run_aimbot(view_matrix_t viewmatrix)
                 powf(w_target_bone_pos.y - local_player_pos.y, 2) +
                 powf(w_target_bone_pos.z - local_player_pos.z, 2));
 
-            if (world_distance < new_closest_distance)
+            // Crosshair (fov) priority or world distance priority
+            if (vars::aimbot::target_selection == 1)
             {
-                new_closest_distance = world_distance;
-                new_closest_player = player;
-                new_closest_model = model;
+                if (fov_distance < new_closest_distance)
+                {
+                    new_closest_distance = fov_distance;
+                    new_closest_player = player;
+                    new_closest_model = model;
+                }
+            }
+            else
+            {
+                if (world_distance < new_closest_distance)
+                {
+                    new_closest_distance = world_distance;
+                    new_closest_player = player;
+                    new_closest_model = model;
+                }
             }
         }
 
         if (new_closest_player)
         {
+            bool is_new_target = (current_target != new_closest_player);
             current_target = new_closest_player;
             current_target_model = new_closest_model;
             if (aimbot_active && !this->locked_target) this->locked_target = new_closest_player;
+            // Reset position tracking when switching targets (prevents anti-flick false positive)
+            if (is_new_target) this->last_target_pos = { 0, 0, 0 };
         }
     }
 

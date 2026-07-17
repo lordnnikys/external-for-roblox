@@ -15,6 +15,9 @@ public:
 
 private:
     uintptr_t selected_instance = 0;
+    uintptr_t navigated_instance = 0;
+    bool pending_scroll = false;
+    uintptr_t cached_rs = 0;
     bool show_script_viewer = false;
     std::string script_viewer_content;
     std::string script_viewer_title;

@@ -227,5 +227,119 @@
     <ClInclude Include="game\features\desync\desync_worker.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="zstd\zdict.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\zstd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\zstd_errors.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\decompress\zstd_ddict.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\decompress\zstd_decompress_block.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\decompress\zstd_decompress_internal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\compress\clevels.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\compress\hist.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\compress\zstd_compress_internal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\compress\zstd_compress_literals.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\compress\zstd_compress_sequences.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\compress\zstd_compress_superblock.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\compress\zstd_cwksp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\compress\zstd_double_fast.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\compress\zstd_fast.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\compress\zstd_lazy.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\compress\zstd_ldm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\compress\zstd_ldm_geartab.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\compress\zstd_opt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\compress\zstd_preSplit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\compress\zstdmt_compress.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\common\allocations.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\common\bits.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\common\bitstream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\common\compiler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\common\cpu.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\common\debug.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\common\error_private.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\common\fse.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\common\huf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\common\mem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\common\pool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\common\portability_macros.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\common\threading.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\common\xxhash.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\common\zstd_deps.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\common\zstd_internal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zstd\common\zstd_trace.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
