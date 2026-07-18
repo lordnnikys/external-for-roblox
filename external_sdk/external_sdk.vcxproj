@@ -152,9 +152,6 @@
     <ClCompile Include="addons\imgui\imgui_widgets.cpp" />
     <ClCompile Include="addons\kernel\memory.cpp" />
     <ClCompile Include="game\core.cpp" />
-    <ClCompile Include="game\features\airswim\airswim.cpp" />
-    <ClCompile Include="game\features\desync\desync.cpp" />
-    <ClCompile Include="game\features\desync\desync_worker.cpp" />
     <ClCompile Include="game\features\example_esp\esp.cpp" />
     <ClCompile Include="game\features\fly\fly.cpp" />
     <ClCompile Include="game\features\handler.cpp" />
@@ -190,9 +187,6 @@
     <ClInclude Include="addons\imgui\imstb_truetype.h" />
     <ClInclude Include="addons\kernel\memory.hpp" />
     <ClInclude Include="game\core.hpp" />
-    <ClInclude Include="game\features\airswim\airswim.hpp" />
-    <ClInclude Include="game\features\desync\desync.hpp" />
-    <ClInclude Include="game\features\desync\desync_worker.hpp" />
     <ClInclude Include="game\features\example_esp\esp.hpp" />
     <ClInclude Include="game\features\fly\fly.hpp" />
     <ClInclude Include="game\features\handler.hpp" />
@@ -209,6 +203,8 @@
     <ClInclude Include="handlers\config\config.hpp" />
     <ClInclude Include="handlers\menu\menu.hpp" />
     <ClInclude Include="handlers\misc\misc.hpp" />
+    <ClInclude Include="handlers\remote_spy.hpp" />
+    <ClInclude Include="handlers\rtti_scanner.hpp" />
     <ClInclude Include="handlers\workspaceviewer\workspaceviewer.hpp" />
     <ClInclude Include="handlers\overlay\draw.hpp" />
     <ClInclude Include="handlers\overlay\overlay.hpp" />

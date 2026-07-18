@@ -102,15 +102,6 @@
     <ClCompile Include="handlers\themes\theme.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="game\features\airswim\airswim.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="game\features\desync\desync.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="game\features\desync\desync_worker.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.hpp">
@@ -212,19 +203,10 @@
     <ClInclude Include="handlers\themes\theme.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="game\features\airswim\airswim.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="math.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Tphandler.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="game\features\desync\desync.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="game\features\desync\desync_worker.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="zstd\zdict.h">
@@ -339,6 +321,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="zstd\common\zstd_trace.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="handlers\remote_spy.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="handlers\rtti_scanner.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
