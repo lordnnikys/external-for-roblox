@@ -55,6 +55,7 @@ void noclip_thread_func()
         // Apply noclip: clear CanCollide(0x08) + CanTouch(0x10) on all primitives
         for (int i = 0; i < prim_count; i++)
         {
+            if (!prims[i]) continue;
             uint8_t flags = memory->read<uint8_t>(prims[i] + offsets::BasePart::PrimitiveFlags);
             memory->write<uint8_t>(prims[i] + offsets::BasePart::PrimitiveFlags, flags & ~0x18);
         }

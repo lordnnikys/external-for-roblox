@@ -83,8 +83,7 @@ std::string c_workspace_viewer::dump_script_to_string(uintptr_t script_instance,
         return "Error: Invalid bytecode";
 
     std::string raw(static_cast<size_t>(bc_size), '\0');
-    for (uint64_t i = 0; i < bc_size; i++)
-        raw[static_cast<size_t>(i)] = (char)memory->read<uint8_t>(bc_ptr + i);
+    ReadProcessMemory(memory->get_handle(), (LPCVOID)bc_ptr, &raw[0], (SIZE_T)bc_size, NULL);
 
     std::string decompressed = rsb1_decompress(raw);
     if (decompressed.empty()) return "Error: RSB1 decompress failed";

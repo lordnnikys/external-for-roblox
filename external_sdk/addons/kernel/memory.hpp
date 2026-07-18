@@ -19,6 +19,7 @@ public:
     int32_t find_process(const char* process_name);
 
     DWORD get_pid() const { return process_id; }
+    HANDLE get_handle() const { return process_handle; }
     bool is_valid() const { return process_handle != NULL && process_handle != INVALID_HANDLE_VALUE; }
 
 
