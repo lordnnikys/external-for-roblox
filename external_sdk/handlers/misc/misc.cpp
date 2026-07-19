@@ -120,6 +120,9 @@ void c_misc::teleport_to_position(uintptr_t p_instance, vector target_pos)
 
     // Write CFrame to primitive's CFrame offset
     memory->write<CFrame>(p_primitive + offsets::CFrame, target_cframe);
+    // Zero velocity to prevent physics from pulling you back
+    vector zero_vel = { 0.f, 0.f, 0.f };
+    memory->write<vector>(p_primitive + offsets::Primitive_AssemblyLinearVelocity, zero_vel);
 }
 
 void c_misc::teleport_to_cframe(uintptr_t p_instance, CFrame target_cframe)
@@ -147,6 +150,8 @@ void c_misc::teleport_to_cframe(uintptr_t p_instance, CFrame target_cframe)
 
     // Write CFrame to primitive's CFrame offset
     memory->write<CFrame>(p_primitive + offsets::CFrame, target_cframe);
+    vector z2 = { 0.f, 0.f, 0.f };
+    memory->write<vector>(p_primitive + offsets::Primitive_AssemblyLinearVelocity, z2);
 }
 
 void c_misc::spectate(uintptr_t player_instance)

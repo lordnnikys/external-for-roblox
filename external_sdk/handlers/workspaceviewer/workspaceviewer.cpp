@@ -148,7 +148,7 @@ void c_workspace_viewer::draw_properties() {
     else if (class_name.find("Part") != std::string::npos || class_name.find("Model") != std::string::npos) {
         ImGui::Separator();
         if (ImGui::Button("Teleport to")) {
-            uintptr_t m = core.find_first_child(core.find_first_child_class(g_main::datamodel, "Workspace"), core.get_instance_name(g_main::localplayer));
+            uintptr_t m = core.get_model_instance(g_main::localplayer);
             if (!m) { ImGui::EndChild(); return; }
             uintptr_t hrp = core.find_first_child(m, "HumanoidRootPart"); if (!hrp) { ImGui::EndChild(); return; }
             uintptr_t pl = memory->read<uintptr_t>(hrp + offsets::Primitive); if (!pl) { ImGui::EndChild(); return; }
