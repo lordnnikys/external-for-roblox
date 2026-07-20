@@ -58,3 +58,20 @@ uintptr_t c_memory::find_image() {
     }
     return 0;
 }
+
+uintptr_t c_memory::find_module(const char* module_name) {
+    HMODULE modules[1024];
+    DWORD cbNeeded;
+    if (!EnumProcessModules(process_handle, modules, sizeof(modules), &cbNeeded))
+        return 0;
+
+    int count = cbNeeded / sizeof(HMODULE);
+    for (int i = 0; i < count; i++) {
+        char name[MAX_PATH] = {};
+        if (GetModuleBaseNameA(process_handle, modules[i], name, sizeof(name))) {
+            if (_stricmp(name, module_name) == 0)
+                return (uintptr_t)modules[i];
+        }
+    }
+    return 0;
+}

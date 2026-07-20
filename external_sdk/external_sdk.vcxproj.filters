@@ -102,6 +102,9 @@
     <ClCompile Include="handlers\themes\theme.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="game\features\luavm\luavm.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.hpp">
@@ -336,6 +339,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="game\features\net_info\net_info.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="game\features\luavm\luavm.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="game\features\luavm\print_shellcode.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="game\features\luavm\thread_hijack.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -211,6 +211,16 @@ namespace vars
         inline bool manual_lag = true; // Manual lag on key press
     }
 
+    namespace luavm {
+        inline bool installed = false;
+        inline bool patches_applied = false;
+        inline int patched_count = 0;
+        inline uintptr_t codecave = 0;
+        inline uintptr_t remote_vtable = 0;
+        inline uintptr_t original_vtable = 0;
+        inline char status_msg[256] = "Ready.";
+    }
+
     // New exploits namespace
     namespace exploits
     {

@@ -48,6 +48,9 @@ public:
     }
 
     // Try read with explicit success result and bytes-read check
+    // Find a specific module (DLL) base address by name
+    uintptr_t find_module(const char* module_name);
+
     template <typename T>
     bool try_read(uintptr_t address, T& out) {
         if (g_safe_mode) return false;

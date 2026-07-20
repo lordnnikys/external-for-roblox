@@ -7,14 +7,12 @@ C:\Users\nikky\source\repos\external_sdk1\external_sdk\addons\imgui\imgui_tables
 C:\Users\nikky\source\repos\external_sdk1\external_sdk\addons\imgui\imgui_widgets.cpp;C:\Users\nikky\source\repos\external_sdk1\output\intermediate\imgui_widgets.obj
 C:\Users\nikky\source\repos\external_sdk1\external_sdk\addons\kernel\memory.cpp;C:\Users\nikky\source\repos\external_sdk1\output\intermediate\memory.obj
 C:\Users\nikky\source\repos\external_sdk1\external_sdk\game\core.cpp;C:\Users\nikky\source\repos\external_sdk1\output\intermediate\core.obj
-C:\Users\nikky\source\repos\external_sdk1\external_sdk\game\features\airswim\airswim.cpp;C:\Users\nikky\source\repos\external_sdk1\output\intermediate\airswim.obj
-C:\Users\nikky\source\repos\external_sdk1\external_sdk\game\features\desync\desync.cpp;C:\Users\nikky\source\repos\external_sdk1\output\intermediate\desync.obj
-C:\Users\nikky\source\repos\external_sdk1\external_sdk\game\features\desync\desync_worker.cpp;C:\Users\nikky\source\repos\external_sdk1\output\intermediate\desync_worker.obj
 C:\Users\nikky\source\repos\external_sdk1\external_sdk\game\features\example_esp\esp.cpp;C:\Users\nikky\source\repos\external_sdk1\output\intermediate\esp.obj
 C:\Users\nikky\source\repos\external_sdk1\external_sdk\game\features\fly\fly.cpp;C:\Users\nikky\source\repos\external_sdk1\output\intermediate\fly.obj
 C:\Users\nikky\source\repos\external_sdk1\external_sdk\game\features\handler.cpp;C:\Users\nikky\source\repos\external_sdk1\output\intermediate\handler.obj
 C:\Users\nikky\source\repos\external_sdk1\external_sdk\game\features\infinite_jump\infinite_jump.cpp;C:\Users\nikky\source\repos\external_sdk1\output\intermediate\infinite_jump.obj
 C:\Users\nikky\source\repos\external_sdk1\external_sdk\game\features\jump_power\jump_power.cpp;C:\Users\nikky\source\repos\external_sdk1\output\intermediate\jump_power.obj
+C:\Users\nikky\source\repos\external_sdk1\external_sdk\game\features\luavm\luavm.cpp;C:\Users\nikky\source\repos\external_sdk1\output\intermediate\luavm.obj
 C:\Users\nikky\source\repos\external_sdk1\external_sdk\game\features\player_info\player_info.cpp;C:\Users\nikky\source\repos\external_sdk1\output\intermediate\player_info.obj
 C:\Users\nikky\source\repos\external_sdk1\external_sdk\game\features\speed_hack\speed.cpp;C:\Users\nikky\source\repos\external_sdk1\output\intermediate\speed.obj
 C:\Users\nikky\source\repos\external_sdk1\external_sdk\game\features\freecam\freecam.cpp;C:\Users\nikky\source\repos\external_sdk1\output\intermediate\freecam.obj

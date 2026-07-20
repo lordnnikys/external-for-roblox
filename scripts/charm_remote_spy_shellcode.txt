@@ -1,0 +1,173 @@
+# Charm Remote Spy Shellcode (Extracted from charm-main)
+# ======================================================
+# This is the exact x64 shellcode used by charm to hook RemoteEvent vtable slot 3
+# and capture calls into a ring buffer for external reading.
+
+# --- Memory Layout (win32u.dll / winsta.dll code cave at +0x2000) ---
+# +0x0000: Complete Object Locator (COL) copy (8 bytes)
+# +0x0008: Shadow vtable (256 * 8 = 2048 bytes)
+# +0x0808: Shellcode slot 0 (128 bytes stride)
+# +0x0888: Shellcode slot 1
+# +0x0908: Shellcode slot 2
+# +0x0988: Data area:
+#   +0x00: ?? (8 bytes, zeroed)
+#   +0x08: ?? (8 bytes)
+#   +0x10: ?? (8 bytes)
+#   +0x18: ?? (8 bytes)
+#   +0x20: total_fires counter (8 bytes, lock inc'd by shellcode)
+#   +0x28: ring_seq (4 bytes, lock xadd'd atomic counter)
+#   +0x2C: padding
+#   +0x30: ring buffer base (32 entries * 40 bytes = 1280 bytes)
+#          Each 40-byte entry: [rcx(8), rdx(8), r8(8), r9(8), slot_id(4), pad(4)]
+
+# Ring constants:
+#   RingCapacity = 32
+#   RingEntrySize = 40
+#   RingSeqOffset = 0x28  (offset of atomic counter in data area)
+#   RingBaseOffset = 0x30  (offset of ring buffer in data area)
+
+# --- Shellcode (x64, position-independent) ---
+# Parameter: data_area (absolute address of data area in target process)
+# Parameter: original_func (absolute address of original vtable entry)
+# Parameter: slot_id (integer, the vtable slot being hooked)
+
+shellcode_asm = """
+; === ENTRY: all registers are live (this is a vtable hook) ===
+; RCX = instance (self/this)
+; RDX = arg2
+; R8  = arg3
+; R9  = arg4
+
+; Save all volatile + non-volatile registers (10 pushes + sub rsp)
+push r15                                ; 41 57
+push r14                                ; 41 56
+push r13                                ; 41 55
+push r12                                ; 41 54
+push rbx                                ; 53
+push rdi                                ; 57
+push rsi                                ; 56
+push rdx                                ; 52  (save arg2)
+push rdx                                ; 52  (dup for 16-byte alignment)
+sub rsp, 0x28                           ; 48 83 EC 28
+
+; Load data_area into r10
+mov rax, <data_area>                    ; 48 B8 [8 bytes]
+mov r10, rax                            ; 49 89 C2
+
+; Atomic increment ring counter: lock xadd [r10+RingSeqOffset], 1
+mov r11d, 1                             ; 41 BB 01 00 00 00
+lock xadd [r10+0x28], r11d              ; F0 45 0F C1 5A 28
+
+; r11d now has the OLD counter value
+; Compute ring index: r11d & 31
+mov eax, r11d                           ; 44 89 D8
+and eax, 31                             ; 83 E0 1F
+
+; Compute entry address: r10 + RingBaseOffset + index * 40
+imul rax, rax, 40                       ; 48 6B C0 28
+add rax, r10                            ; 4C 01 D0
+add rax, 0x30                           ; 48 05 30 00 00 00    (RingBaseOffset)
+
+; Write ring entry: [rax+0]  = RCX (instance)
+mov [rax], rcx                          ; 48 89 08
+; Reload arg2 from stack: [rsp+0x58]  (through 8 pushes + 0x28 sub)
+mov rdx, [rsp+0x58]                     ; 48 8B 54 24 58
+mov [rax+8], rdx                        ; 48 89 50 08
+mov [rax+16], r8                        ; 4C 89 40 10
+mov [rax+24], r9                        ; 4C 89 48 18
+mov [rax+32], <slot_id>                 ; C7 40 20 [4 bytes]
+
+; Increment total fires counter
+lock inc qword [r10+0x20]               ; F0 49 FF 42 20
+
+; === Epilogue: restore all regs, tail-call original ===
+add rsp, 0x28                           ; 48 83 C4 28
+pop rdx                                 ; 5A  (extra alignment)
+pop rdx                                 ; 5A  (restore arg2!)
+pop rsi                                 ; 5E
+pop rdi                                 ; 5F
+pop rbx                                 ; 5B
+pop r12                                 ; 41 5C
+pop r13                                 ; 41 5D
+pop r14                                 ; 41 5E
+pop r15                                 ; 41 5F
+
+; Tail-call original function via jmp [rip+0]
+jmp [rip+0]                             ; FF 25 00 00 00 00
+<original_func>                         ; [8 bytes - absolute address]
+"""
+
+# --- Hex bytes (for copy/paste) ---
+hex_bytes = """
+41 57 41 56 41 55 41 54 53 57 56 52 52 48 83 EC 28
+48 B8 [data_area_ptr_8_bytes]
+49 89 C2
+41 BB 01 00 00 00
+F0 45 0F C1 5A 28
+44 89 D8
+83 E0 1F
+48 6B C0 28
+4C 01 D0
+48 05 30 00 00 00
+48 89 08
+48 8B 54 24 58
+48 89 50 08
+4C 89 40 10
+4C 89 48 18
+C7 40 20 [slot_id_4_bytes]
+F0 49 FF 42 20
+48 83 C4 28
+5A 5A 5E 5F 5B
+41 5C 41 5D 41 5E 41 5F
+FF 25 00 00 00 00
+[original_vfunc_8_bytes]
+"""
+
+# --- Ring Buffer Layout (read externally) ---
+ring_layout = """
+Data area structure (offset from g_remote_data_area):
+  +0x00: uint64 ? (zeroed)
+  +0x08: uint64 ? (zeroed)
+  +0x10: uint64 ? (zeroed)
+  +0x18: uint64 ? (zeroed)
+  +0x20: uint64 total_fires     (lock inc'd by shellcode)
+  +0x28: uint32 ring_seq        (lock xadd'd by shellcode, wraps)
+  +0x2C: uint32 padding
+  +0x30: RingEntry[32]          (ring buffer)
+
+RingEntry (40 bytes):
+  +0x00: uint64 rcx (instance/self)
+  +0x08: uint64 rdx (arg1)
+  +0x10: uint64 r8  (arg2)
+  +0x18: uint64 r9  (arg3)
+  +0x20: uint32 slot_id
+  +0x24: uint32 padding
+
+Consumer logic:
+  - Read ring_seq from +0x28
+  - If ring_seq > last_seq: process (ring_seq - last_seq) entries
+  - Entry index = (last_seq + N) & 31
+  - Entry addr = data_area + 0x30 + index * 40
+  - Read full 40-byte entry via RPM
+"""
+
+# --- Installation Steps ---
+install_steps = """
+1. Find winsta.dll base in Roblox (or use dxgi.dll)
+2. Allocate RWX code cave at base+0x2000 (or use VirtualAllocEx)
+3. Copy Complete Object Locator (COL) from original vtable-8 to cave+0x00
+4. Copy entire original vtable (2048 bytes) to cave+0x08
+5. Zero data area (cave+0x0988 to cave+0x0988+DataAreaSize)
+6. For each hook slot:
+   a. Build shellcode with data_area=codecave+0x0988, 
+      original_func=vtable[slot], slot_id=slot
+   b. Write shellcode to codecave+0x0808+slot*128
+   c. Patch shadow vtable: cave+0x08+slot*8 = shellcode_addr
+   d. FlushInstructionCache on shellcode_addr
+7. For each RemoteEvent instance to hook:
+   a. Read instance's vtable pointer
+   b. If it matches original vtable: write shadow vtable address
+8. Poll ring_seq from data_area+0x28 externally via RPM
+9. When ring_seq advances: read entry, decode RCX/RDX/R8/R9, resolve 
+   RemoteEvent name from RCX (instance pointer)
+"""

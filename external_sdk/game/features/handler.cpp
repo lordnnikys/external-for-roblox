@@ -4,6 +4,7 @@
 #include "freecam/freecam.hpp"
 #include "fly/fly.hpp"
 #include "infinite_jump/infinite_jump.hpp"
+#include "luavm/luavm.hpp"
 #include "../../tphandler.hpp"
 
 #include "../../handlers/vars.hpp"
@@ -84,4 +85,6 @@ void c_feature_handler::start(uintptr_t datamodel)
 
     if (vars::set_fov::toggled)
         freecam.set_fov(vars::set_fov::set_fov);
+
+    luavm::tick();
 }

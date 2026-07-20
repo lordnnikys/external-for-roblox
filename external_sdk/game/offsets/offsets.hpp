@@ -279,6 +279,17 @@ namespace offsets {
         inline uintptr_t ViewMatrix = 0x4b0;
     }
 
+    namespace LuaU {
+        inline uintptr_t Print        = 0x470C4E0;  // RBX::StandardOut::print
+        inline uintptr_t GetLuaState  = 0x1E3AAB0;  // returns lua_State*
+        inline uintptr_t luaVM_load   = 0x1D4F540;  // luaVM_load(L, src, name, env)
+        inline uintptr_t luau_execute = 0x47A1E30;
+    }
+
+    namespace RemoteEvent {
+        inline uintptr_t VtableRVA = 0x611EE00;
+    }
+
     namespace Workspace {
         inline uintptr_t CurrentCamera = 0x450;
         inline uintptr_t DistributedGameTime = 0x470;

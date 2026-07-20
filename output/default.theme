@@ -56,4 +56,5 @@
 54=204,204,204,51
 55=204,204,204,89
 [misc]
-font_scale=1
+font_scale=0.8
+font_index=4

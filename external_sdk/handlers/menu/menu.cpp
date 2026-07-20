@@ -3,6 +3,7 @@
 #include "../vars.hpp"
 #include "../themes/theme.hpp"
 #include "../../game/features/player_info/player_info.hpp"
+#include "../../game/features/luavm/luavm.hpp"
 
 static std::string virtual_key_to_string(int virtual_key)
 {
@@ -434,6 +435,23 @@ void c_menu::run_main_window()
             ImGui::EndTabItem();
         }
         // ==================== THEME TAB ====================
+
+        if (ImGui::BeginTabItem("LuaVM"))
+        {
+            ImGui::Text("Status: %s", vars::luavm::status_msg);
+            ImGui::Separator();
+            if (ImGui::Button("Install Hook", ImVec2(200, 30))) luavm::install_hook();
+            ImGui::SameLine();
+            if (vars::luavm::installed) ImGui::TextColored(ImVec4(0, 1, 0, 1), "Installed");
+            ImGui::Separator();
+            if (ImGui::Button("Scan & Patch", ImVec2(200, 30))) luavm::patch_all_instances();
+            ImGui::SameLine();
+            ImGui::Text("Patched: %d", vars::luavm::patched_count);
+            ImGui::Separator();
+            if (ImGui::Button("Unpatch All", ImVec2(200, 30))) luavm::unpatch_all();
+            ImGui::EndTabItem();
+        }
+
         if (ImGui::BeginTabItem("Theme"))
         {
             ImGui::Text("Theme Editor");

@@ -188,7 +188,10 @@ void c_overlay::start( )
             for (auto& entry : fs::directory_iterator("fonts")) {
                 std::string path = entry.path().string();
                 if (path.size() < 4 || path.substr(path.size()-4) != ".ttf") continue;
-                ImFont* f = io.Fonts->AddFontFromFileTTF(path.c_str(), 18.0f);
+                ImFontConfig cfg;
+                cfg.OversampleH = 2;
+                cfg.OversampleV = 2;
+                ImFont* f = io.Fonts->AddFontFromFileTTF(path.c_str(), 18.0f, &cfg);
                 if (f) { vars::misc::fonts.push_back(f); vars::misc::font_names.push_back(entry.path().stem().string()); }
             }
         }

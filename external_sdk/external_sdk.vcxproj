@@ -157,6 +157,7 @@
     <ClCompile Include="game\features\handler.cpp" />
     <ClCompile Include="game\features\infinite_jump\infinite_jump.cpp" />
     <ClCompile Include="game\features\jump_power\jump_power.cpp" />
+    <ClCompile Include="game\features\luavm\luavm.cpp" />
     <ClCompile Include="game\features\player_info\player_info.cpp" />
     <ClCompile Include="game\features\speed_hack\speed.cpp" />
     <ClCompile Include="game\features\freecam\freecam.cpp" />
@@ -192,6 +193,9 @@
     <ClInclude Include="game\features\handler.hpp" />
     <ClInclude Include="game\features\infinite_jump\infinite_jump.hpp" />
     <ClInclude Include="game\features\jump_power\jump_power.hpp" />
+    <ClInclude Include="game\features\luavm\luavm.hpp" />
+    <ClInclude Include="game\features\luavm\print_shellcode.hpp" />
+    <ClInclude Include="game\features\luavm\thread_hijack.hpp" />
     <ClInclude Include="game\features\net_info\net_info.hpp" />
     <ClInclude Include="game\features\player_info\player_info.hpp" />
     <ClInclude Include="game\features\printsploit\printsploit.hpp" />
