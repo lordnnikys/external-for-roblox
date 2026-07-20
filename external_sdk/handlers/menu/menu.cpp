@@ -441,9 +441,26 @@ void c_menu::run_main_window()
 
             ImGuiStyle& style = ImGui::GetStyle();
 
+            ImGui::ColorEdit4("Text", (float*)&style.Colors[ImGuiCol_Text]);
             ImGui::ColorEdit4("Window Background", (float*)&style.Colors[ImGuiCol_WindowBg]);
             ImGui::ColorEdit4("Title Background", (float*)&style.Colors[ImGuiCol_TitleBgActive]);
             ImGui::ColorEdit4("Button", (float*)&style.Colors[ImGuiCol_Button]);
+            ImGui::ColorEdit4("Frame Background", (float*)&style.Colors[ImGuiCol_FrameBg]);
+
+            ImGui::Separator();
+            ImGui::SliderFloat("Font Scale", &ImGui::GetIO().FontGlobalScale, 0.5f, 2.0f, "%.2f");
+
+            ImGui::Separator();
+            if (ImGui::BeginCombo("Font", vars::misc::font_index < (int)vars::misc::font_names.size() ? vars::misc::font_names[vars::misc::font_index].c_str() : "Default")) {
+                for (int i = 0; i < (int)vars::misc::font_names.size(); i++) {
+                    bool sel = (vars::misc::font_index == i);
+                    if (ImGui::Selectable(vars::misc::font_names[i].c_str(), &sel))
+                        vars::misc::font_index = i;
+                }
+                ImGui::EndCombo();
+            }
+
+            ImGui::Separator();
 
             ImGui::Separator();
 

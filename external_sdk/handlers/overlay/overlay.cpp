@@ -6,6 +6,7 @@
 #include "../../game/features/handler.hpp"
 #include "../menu/menu.hpp"
 #include "../themes/theme.hpp"
+#include <filesystem>
 #include "../workspaceviewer/workspaceviewer.hpp"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam );
@@ -175,6 +176,24 @@ void c_overlay::start( )
 
     ImGui::StyleColorsDark( );
 
+    // Preload fonts from fonts/ folder
+    {
+        namespace fs = std::filesystem;
+        ImGuiIO& io = ImGui::GetIO();
+        vars::misc::fonts.clear(); vars::misc::font_names.clear();
+        ImFont* def = io.Fonts->AddFontDefault();
+        if (def) { vars::misc::fonts.push_back(def); vars::misc::font_names.push_back("Default"); }
+
+        if (fs::exists("fonts") && fs::is_directory("fonts")) {
+            for (auto& entry : fs::directory_iterator("fonts")) {
+                std::string path = entry.path().string();
+                if (path.size() < 4 || path.substr(path.size()-4) != ".ttf") continue;
+                ImFont* f = io.Fonts->AddFontFromFileTTF(path.c_str(), 18.0f);
+                if (f) { vars::misc::fonts.push_back(f); vars::misc::font_names.push_back(entry.path().stem().string()); }
+            }
+        }
+    }
+
     std::ifstream f("default.theme");
     if (f.good()) {
         theme.load("default.theme");
@@ -223,6 +242,9 @@ void c_overlay::start( )
         ImGui_ImplWin32_NewFrame( );
         ImGui::NewFrame( );
 
+        if (vars::misc::font_index < (int)vars::misc::fonts.size())
+            ImGui::PushFont(vars::misc::fonts[vars::misc::font_index]);
+
         rescan.start_search( );
 
         // Only run game-dependent features if the datamodel has been found
@@ -257,6 +279,7 @@ void c_overlay::start( )
             menu.run_main_window( );
         }
 
+        ImGui::PopFont();
         ImGui::Render( );
 
         const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w,

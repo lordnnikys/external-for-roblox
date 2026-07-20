@@ -1,3 +1,4 @@
+#include "../../handlers/vars.hpp"
 #include "theme.hpp"
 #include <iostream>
 #include <sstream>
@@ -62,6 +63,10 @@ void c_theme::save(const std::string& filename)
             file << i << "=" << color_to_string(style.Colors[i]) << std::endl;
         }
 
+        file << "[misc]" << std::endl;
+        file << "font_scale=" << ImGui::GetIO().FontGlobalScale << std::endl;
+        file << "font_index=" << vars::misc::font_index << std::endl;
+
         file.close();
         std::cout << "Theme saved to " << filename << std::endl;
     }
@@ -77,23 +82,33 @@ void c_theme::load(const std::string& filename)
     if (file.is_open())
     {
         std::map<int, std::string> data;
+        std::map<std::string, std::string> misc;
+        std::string section;
         std::string line;
         while (std::getline(file, line))
         {
             line.erase(0, line.find_first_not_of(" \t\r\n"));
             line.erase(line.find_last_not_of(" \t\r\n") + 1);
 
-            if (line.empty() || line[0] == ';' || line[0] == '#' || line[0] == '[')
+            if (line.empty() || line[0] == ';' || line[0] == '#')
                 continue;
+
+            if (line[0] == '[') {
+                section = line.substr(1, line.find(']') - 1);
+                continue;
+            }
 
             size_t delimiterPos = line.find('=');
             if (delimiterPos != std::string::npos)
             {
                 try
                 {
-                    int key = std::stoi(line.substr(0, delimiterPos));
-                    std::string value = line.substr(delimiterPos + 1);
-                    data[key] = value;
+                    if (section == "misc") {
+                        misc[line.substr(0, delimiterPos)] = line.substr(delimiterPos + 1);
+                    } else {
+                        int key = std::stoi(line.substr(0, delimiterPos));
+                        data[key] = line.substr(delimiterPos + 1);
+                    }
                 }
                 catch (const std::exception& e)
                 {
@@ -111,6 +126,11 @@ void c_theme::load(const std::string& filename)
             {
                 style.Colors[key] = string_to_color(val);
             }
+        }
+
+        if (misc.count("font_scale")) {
+            ImGui::GetIO().FontGlobalScale = std::stof(misc["font_scale"]);
+        if (misc.count("font_index")) vars::misc::font_index = std::stoi(misc["font_index"]);
         }
 
         std::cout << "Theme loaded from " << filename << std::endl;

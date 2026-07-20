@@ -170,6 +170,9 @@ namespace vars
     namespace misc
     {
         inline bool show_workspace_viewer = false;
+        inline int font_index = 0;
+        inline std::vector<ImFont*> fonts;
+        inline std::vector<std::string> font_names;
         inline float teleport_offset_x = 0.0f;
         inline float teleport_offset_y = 3.0f;  // Default slight Y offset to spawn above target
         inline float teleport_offset_z = 0.0f;
