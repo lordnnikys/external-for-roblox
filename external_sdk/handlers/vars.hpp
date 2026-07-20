@@ -219,6 +219,12 @@ namespace vars
         inline uintptr_t remote_vtable = 0;
         inline uintptr_t original_vtable = 0;
         inline char status_msg[256] = "Ready.";
+        inline char msg[128] = "Hello World";
+        inline bool lvl_output = true;
+        inline bool lvl_info   = true;
+        inline bool lvl_warn   = true;
+        inline bool lvl_error  = true;
+        inline uint8_t level_mask = 0x0F; // computed from checkboxes
     }
 
     // New exploits namespace

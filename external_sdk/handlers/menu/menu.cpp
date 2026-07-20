@@ -4,6 +4,7 @@
 #include "../themes/theme.hpp"
 #include "../../game/features/player_info/player_info.hpp"
 #include "../../game/features/luavm/luavm.hpp"
+#define _CRT_SECURE_NO_WARNINGS
 
 static std::string virtual_key_to_string(int virtual_key)
 {
@@ -436,19 +437,20 @@ void c_menu::run_main_window()
         }
         // ==================== THEME TAB ====================
 
+
         if (ImGui::BeginTabItem("LuaVM"))
         {
             ImGui::Text("Status: %s", vars::luavm::status_msg);
             ImGui::Separator();
-            if (ImGui::Button("Install Hook", ImVec2(200, 30))) luavm::install_hook();
-            ImGui::SameLine();
-            if (vars::luavm::installed) ImGui::TextColored(ImVec4(0, 1, 0, 1), "Installed");
+            ImGui::Checkbox("Output", &vars::luavm::lvl_output); ImGui::SameLine();
+            ImGui::Checkbox("Info", &vars::luavm::lvl_info); ImGui::SameLine();
+            ImGui::Checkbox("Warning", &vars::luavm::lvl_warn); ImGui::SameLine();
+            ImGui::Checkbox("Error", &vars::luavm::lvl_error);
+            ImGui::InputText("Message", vars::luavm::msg, sizeof(vars::luavm::msg));
             ImGui::Separator();
-            if (ImGui::Button("Scan & Patch", ImVec2(200, 30))) luavm::patch_all_instances();
-            ImGui::SameLine();
-            ImGui::Text("Patched: %d", vars::luavm::patched_count);
+            if (ImGui::Button("Execute", ImVec2(200, 35))) luavm::execute_heartbeat();
             ImGui::Separator();
-            if (ImGui::Button("Unpatch All", ImVec2(200, 30))) luavm::unpatch_all();
+            if (ImGui::Button("Stop", ImVec2(200, 30))) luavm::unpatch_all();
             ImGui::EndTabItem();
         }
 
@@ -500,7 +502,7 @@ void c_menu::run_main_window()
 
         ImGui::EndTabBar();
     }
-
+    
     ImGui::Separator();
     if (ImGui::Button("Save Config"))
     {

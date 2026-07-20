@@ -280,10 +280,7 @@ namespace offsets {
     }
 
     namespace LuaU {
-        inline uintptr_t Print        = 0x470C4E0;  // RBX::StandardOut::print
-        inline uintptr_t GetLuaState  = 0x1E3AAB0;  // returns lua_State*
-        inline uintptr_t luaVM_load   = 0x1D4F540;  // luaVM_load(L, src, name, env)
-        inline uintptr_t luau_execute = 0x47A1E30;
+        inline uintptr_t Print        = 0x470C4E0;
     }
 
     namespace RemoteEvent {
