@@ -192,10 +192,13 @@
     <ClInclude Include="game\features\handler.hpp" />
     <ClInclude Include="game\features\infinite_jump\infinite_jump.hpp" />
     <ClInclude Include="game\features\jump_power\jump_power.hpp" />
+    <ClInclude Include="game\features\net_info\net_info.hpp" />
     <ClInclude Include="game\features\player_info\player_info.hpp" />
+    <ClInclude Include="game\features\printsploit\printsploit.hpp" />
     <ClInclude Include="game\features\speed_hack\speed.hpp" />
     <ClInclude Include="game\features\freecam\freecam.hpp" />
     <ClInclude Include="game\features\noclip\noclip.hpp" />
+    <ClInclude Include="game\features\vc_bypass\vc_bypass.hpp" />
     <ClInclude Include="game\instance.hpp" />
     <ClInclude Include="game\features\freecam\spring.hpp" />
     <ClInclude Include="game\offsets\offsets.hpp" />

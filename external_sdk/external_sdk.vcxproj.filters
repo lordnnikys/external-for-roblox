@@ -329,5 +329,14 @@
     <ClInclude Include="handlers\rtti_scanner.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="game\features\printsploit\printsploit.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="game\features\vc_bypass\vc_bypass.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="game\features\net_info\net_info.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

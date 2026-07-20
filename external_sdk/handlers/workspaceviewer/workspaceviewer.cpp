@@ -216,5 +216,55 @@ void c_workspace_viewer::run() {
         ImGui::EndChild(); ImGui::SameLine(); draw_properties();
     }
     ImGui::End();
-    if (show_script_viewer) { ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver); if (ImGui::Begin(script_viewer_title.c_str(), &show_script_viewer)) { if (ImGui::Button("Copy")) ImGui::SetClipboardText(script_viewer_content.c_str()); ImGui::TextWrapped("%s", script_viewer_content.c_str()); ImGui::End(); } }
+
+    if (show_script_viewer) {
+        ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+        if (ImGui::Begin(script_viewer_title.c_str(), &show_script_viewer)) {
+            static std::string prev; static std::vector<std::string> lines;
+            static std::vector<char> sel; static int lc = 0;
+            static int last = -1;
+            if (script_viewer_content != prev) {
+                prev = script_viewer_content;
+                lines.clear();
+                std::istringstream iss(prev); std::string ln;
+                while (std::getline(iss, ln)) lines.push_back(ln);
+                sel.assign(lines.size(), 0); last = -1;
+                lc = (int)lines.size();
+            }
+            ImGui::Text("Line Count: %d", lc);
+            ImGui::SameLine();
+            if (ImGui::Button("Copy All")) ImGui::SetClipboardText(prev.c_str());
+            ImGui::SameLine();
+            if (ImGui::Button("Copy Selected")) {
+                std::string out; bool first = true;
+                for (int i = 0; i < lc; i++)
+                    if (sel[i]) { if (!first) out += "\n"; out += lines[i]; first = false; }
+                ImGui::SetClipboardText(out.c_str());
+            }
+            ImGui::BeginChild("##sc", ImVec2(0,0), ImGuiChildFlags_Borders);
+            // Ctrl+C to copy selected lines
+            if (ImGui::IsWindowFocused() && ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_C)) {
+                std::string out; bool first = true;
+                for (int i = 0; i < lc; i++)
+                    if (sel[i]) { if (!first) out += "\n"; out += lines[i]; first = false; }
+                if (!out.empty()) ImGui::SetClipboardText(out.c_str());
+            }
+            ImGuiListClipper clip; clip.Begin(lc);
+            while (clip.Step()) {
+                for (int i = clip.DisplayStart; i < clip.DisplayEnd; i++) {
+                    std::string lbl = std::to_string(i+1) + "  " + lines[i];
+                    bool b = sel[i] != 0;
+                    if (ImGui::Selectable(lbl.c_str(), &b, 0)) {
+                        if (ImGui::GetIO().KeyShift && last >= 0) {
+                            int a = last < i ? last : i, z = last < i ? i : last;
+                            for (int j = a; j <= z; j++) sel[j] = 1;
+                        } else { for (int j = 0; j < lc; j++) sel[j] = 0; sel[i] = 1; }
+                        last = i;
+                    }
+                }
+            }
+            ImGui::EndChild();
+            ImGui::End();
+        }
+    }
 }
